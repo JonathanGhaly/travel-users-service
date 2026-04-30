@@ -1,24 +1,18 @@
 package com.JonathanGhaly.travel.users.mapper;
 
-
 import com.JonathanGhaly.travel.users.domain.User;
+import com.JonathanGhaly.travel.users.dto.CreateUserRequestDto;
 import com.JonathanGhaly.travel.users.dto.UserResponseDto;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-import java.util.HashSet;
-import java.util.stream.Collectors;
+@Mapper(componentModel = "spring")
+public interface UserMapper {
 
-@Component
-public class UserMapper {
+    UserResponseDto toResponse(User user);
 
-    public UserResponseDto toResponse(User user) {
-        return UserResponseDto.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .createdAt(user.getCreatedAt())
-                .build();
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "keycloakId", source = "keycloakId")
+    User mapRegisterDtoToEntity(CreateUserRequestDto dto, String keycloakId);
 }

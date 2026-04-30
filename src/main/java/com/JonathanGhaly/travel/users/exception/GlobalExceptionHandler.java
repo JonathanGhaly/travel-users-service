@@ -44,5 +44,14 @@ public class GlobalExceptionHandler {
                 )
         );
     }
-
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<?> handleApiException(ApiException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(
+                Map.of(
+                        "timestamp", OffsetDateTime.now(),
+                        "error", ex.getStatus().getReasonPhrase(),
+                        "message", ex.getMessage()
+                )
+        );
+    }
 }

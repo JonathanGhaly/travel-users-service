@@ -6,11 +6,11 @@ import com.JonathanGhaly.travel.users.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -21,7 +21,7 @@ public class UserController {
         return service.create(request);
     }
 
-    @GetMapping("/me")
+    @GetMapping("/profile")
     public UserResponseDto me(@AuthenticationPrincipal Jwt jwt) {
         return service.getProfile(jwt.getSubject());
     }

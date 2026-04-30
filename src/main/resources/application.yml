@@ -42,7 +42,15 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://keycloak:8080/realms/travel-platform
-
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        spring.json.add.type.headers: false
 
 management:
   endpoints:
@@ -63,6 +71,14 @@ management:
 server:
   port: 8081
   address: 0.0.0.0
+
+keycloak:
+  server-url: ${KEYCLOAK_SERVER_URL:http://keycloak:8080}
+  realm: ${KEYCLOAK_REALM:travel-platform}
+  client-id: ${KEYCLOAK_CLIENT_ID:travel-users-service}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET:your-client-secret}
+  admin-username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+  admin-password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
 
 logging:
   level:

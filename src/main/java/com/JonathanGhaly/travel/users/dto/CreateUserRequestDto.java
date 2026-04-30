@@ -1,23 +1,15 @@
 package com.JonathanGhaly.travel.users.dto;
-import jakarta.validation.constraints.*;
-import lombok.Data;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.Set;
 
-@Data
-public class CreateUserRequestDto {
-    @NotBlank
-    private String username;
-
-    @Email
-    private String email;
-
-    @NotBlank
-    @Size(min = 6)
-    private String password;
-
-    private String firstName;
-    private String lastName;
-
-    private Set<String> roles;
-}
+public record CreateUserRequestDto(
+        @NotBlank String username,
+        @Email String email,
+        @NotBlank @Size(min = 6) String password,
+        String firstName,
+        String lastName,
+        Set<String> roles
+) {}

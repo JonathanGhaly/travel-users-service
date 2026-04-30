@@ -3,22 +3,26 @@ package com.JonathanGhaly.travel.users.service.impl;
 import com.JonathanGhaly.travel.users.config.KeycloakProperties;
 import com.JonathanGhaly.travel.users.domain.User;
 import com.JonathanGhaly.travel.users.dto.CreateUserRequestDto;
+import com.JonathanGhaly.travel.users.dto.UserEventDto;
 import com.JonathanGhaly.travel.users.dto.UserResponseDto;
 import com.JonathanGhaly.travel.users.exception.ApiException;
+import com.JonathanGhaly.travel.users.kafka.UserEventPublisher;
 import com.JonathanGhaly.travel.users.mapper.UserMapper;
 import com.JonathanGhaly.travel.users.repository.UserRepository;
 import com.JonathanGhaly.travel.users.service.UserService;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.core.Response;
 import lombok.RequiredArgsConstructor;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import jakarta.ws.rs.core.Response;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +32,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper mapper;
     private final Keycloak keycloak;
     private final KeycloakProperties properties;
+    private final UserEventPublisher eventPublisher; // Injected Kafka Publisher
 
     @Override
     @Transactional
@@ -37,10 +42,11 @@ public class UserServiceImpl implements UserService {
         UsersResource usersResource = keycloak.realm(properties.getRealm()).users();
 
         UserRepresentation userRep = new UserRepresentation();
-        userRep.setUsername(request.getUsername());
-        userRep.setEmail(request.getEmail());
-        userRep.setFirstName(request.getFirstName());
-        userRep.setLastName(request.getLastName());
+        // Note: Using record accessors (request.username()) instead of getters (request.getUsername())
+        userRep.setUsername(request.username());
+        userRep.setEmail(request.email());
+        userRep.setFirstName(request.firstName());
+        userRep.setLastName(request.lastName());
         userRep.setEnabled(true);
 
         Response response = usersResource.create(userRep);
@@ -55,7 +61,7 @@ public class UserServiceImpl implements UserService {
         // 2️⃣ Set password in Keycloak
         CredentialRepresentation credential = new CredentialRepresentation();
         credential.setType(CredentialRepresentation.PASSWORD);
-        credential.setValue(request.getPassword());
+        credential.setValue(request.password());
         credential.setTemporary(false);
 
         try {
@@ -67,18 +73,23 @@ public class UserServiceImpl implements UserService {
         }
 
         // 3️⃣ Save user locally
-        User user = User.builder()
-                .keycloakId(keycloakId)
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .build();
+        User user = mapper.mapRegisterDtoToEntity(request, keycloakId);
+        User savedUser = repository.save(user);
 
-        return mapper.toResponse(repository.save(user));
+        // 4️⃣ Publish Event to Kafka
+        eventPublisher.publish(new UserEventDto(
+                savedUser.getId(),
+                savedUser.getEmail(),
+                savedUser.getUsername(),
+                "REGISTERED",
+                Instant.now()
+        ));
+
+        return mapper.toResponse(savedUser);
     }
 
     @Override
+    @Cacheable(value = "user-profiles", key = "#keycloakId") // Cache Profile lookups via Redis
     public UserResponseDto getProfile(String keycloakId) {
         return repository.findByKeycloakId(keycloakId)
                 .map(mapper::toResponse)
